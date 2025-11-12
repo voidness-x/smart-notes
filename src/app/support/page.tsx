@@ -21,7 +21,7 @@ async function SupportPage() {
   }
 
   // Get user profile if logged in
-  let userProfile = null;
+  let userProfile: { id: string; email: string; name: string | null } | null = null;
   if (user) {
     let profile = await prisma.user.findUnique({
       where: { id: user.id },
@@ -62,7 +62,7 @@ async function SupportPage() {
   }
 
   // Get user's tickets if logged in
-  let tickets = [];
+  let tickets: any[] = [];
   if (user) {
     const ticketsResult = await getMySupportTicketsAction();
     tickets = ticketsResult.tickets || [];
