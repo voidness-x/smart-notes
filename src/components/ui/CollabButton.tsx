@@ -71,7 +71,7 @@ function CollabButton({ noteId, isCollaborative }: Props) {
 
     if (result.errorMessage) {
       toast.error("Error", { description: result.errorMessage });
-    } else if (result.inviteLink) {
+    } else if (!result.errorMessage && 'inviteLink' in result && result.inviteLink) {
       setInviteLink(result.inviteLink);
       toast.success("Success", { description: "Invite link created" });
     }
