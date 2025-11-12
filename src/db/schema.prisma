@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Note {
+  id              String   @id @default(uuid())
+  text            String
+  authorId        String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt @default(now())
+  pinned          Boolean  @default(false)
+  tags            String[] @default([])
+  title           String?  @default("")
+  isCollaborative Boolean  @default(false)
+  author          User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  collaborators   User[]   @relation("NoteCollaborators")
+  invites         CollaborationInvite[]
+}
+
+model User {
+  id                String                @id @default(uuid())
+  email             String                @unique
+  name              String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt @default(now())
+  avatarUrl         String?
+  role              String                @default("user") // user, admin, supervisor
+  lastActiveAt      DateTime?             @default(now())
+  blocked           Boolean               @default(false) // Whether user is blocked from accessing the website
+  posts             Note[]
+  collaboratedNotes Note[]                @relation("NoteCollaborators")
+  sentInvites       CollaborationInvite[]  @relation("InviteSender")
+  receivedInvites   CollaborationInvite[]  @relation("InviteReceiver")
+  reviews           Review[]              @relation("UserReviews")
+  reviewReplies     ReviewReply[]         @relation("UserReviewReplies")
+  supportTickets    SupportTicket[]       @relation("UserSupportTickets")
+  handledTickets    SupportTicket[]       @relation("HandledByUser")
+  
+  @@index([role])
+  @@index([blocked])
+}
+
+model CollaborationInvite {
+  id          String   @id @default(uuid())
+  noteId      String
+  senderId    String
+  receiverId  String?
+  inviteToken String   @unique
+  status      String   @default("pending") // pending, accepted, rejected, expired
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+  note        Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  sender      User     @relation("InviteSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver    User?    @relation("InviteReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  
+  @@index([receiverId])
+  @@index([inviteToken])
+  @@index([status])
+}
+
+model Review {
+  id        String       @id @default(uuid())
+  userId    String
+  rating    Int          // 1-5 stars
+  comment   String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt @default(now())
+  user      User         @relation("UserReviews", fields: [userId], references: [id], onDelete: Cascade)
+  replies   ReviewReply[]
+  
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model ReviewReply {
+  id        String   @id @default(uuid())
+  reviewId  String
+  userId    String
+  comment   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt @default(now())
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user      User     @relation("UserReviewReplies", fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([reviewId])
+  @@index([userId])
+}
+
+model SupportTicket {
+  id              String   @id @default(uuid())
+  userId          String
+  email           String
+  title           String
+  description     String
+  photoUrl        String?
+  status          String   @default("sent") // sent, being_processed, complete
+  handledById     String?
+  handledAt       DateTime?
+  solution        String?  // Solution/reply from admin/supervisor
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt @default(now())
+  satisfied       Boolean? // null = not asked yet, true = yes, false = no
+  user            User     @relation("UserSupportTickets", fields: [userId], references: [id], onDelete: Cascade)
+  handledBy       User?    @relation("HandledByUser", fields: [handledById], references: [id], onDelete: SetNull)
+  
+  @@index([userId])
+  @@index([status])
+  @@index([handledById])
+}
