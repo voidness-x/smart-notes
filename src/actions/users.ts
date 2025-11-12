@@ -44,6 +44,7 @@ export const loginAction = async (email: string, password: string) => {
         }
         
         // Ensure user exists in database (in case they were deleted but Supabase Auth user still exists)
+        // Don't fail login if database operations fail - authentication is the priority
         if (data.user?.id && data.user?.email) {
             try {
                 const existingUser = await prisma.user.findUnique({
@@ -52,19 +53,24 @@ export const loginAction = async (email: string, password: string) => {
 
                 if (!existingUser) {
                     // User doesn't exist in database, create them
-                    await prisma.user.create({
-                        data: {
-                            id: data.user.id,
-                            email: data.user.email,
-                        },
-                    });
+                    try {
+                        await prisma.user.create({
+                            data: {
+                                id: data.user.id,
+                                email: data.user.email,
+                            },
+                        });
+                    } catch (createError: any) {
+                        // If user creation fails (race condition, connection issue, etc.), continue anyway
+                        // User can still login - database sync can happen later
+                        console.error("Failed to create user in database:", createError?.message || createError);
+                    }
                 }
             } catch (dbError: any) {
-                // If user already exists (race condition), that's fine
-                // Don't fail login if database user creation fails - user can still use the app
-                if (dbError?.code !== 'P2002') {
-                    // Silently handle other database errors
-                }
+                // Database connection or query failed - log but don't fail login
+                // Authentication succeeded, which is the primary concern
+                console.error("Database error during login (non-fatal):", dbError?.message || dbError);
+                // Continue with login - database sync can happen later
             }
         }
         
@@ -72,7 +78,15 @@ export const loginAction = async (email: string, password: string) => {
         // Return success - the client will handle the redirect
         return { errorMessage: null, success: true};
 
-    } catch (error) {
+    } catch (error: any) {
+        // Log the actual error for debugging
+        console.error("Login error:", error?.message || error);
+        
+        // Return user-friendly error message
+        if (error?.message?.includes("Supabase") || error?.message?.includes("environment")) {
+            return { errorMessage: "Authentication service error. Please check configuration.", success: false };
+        }
+        
         return { errorMessage: "An error occurred during login. Please try again.", success: false };
     } 
 };
