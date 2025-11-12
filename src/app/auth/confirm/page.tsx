@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/auth/client";
 import { Loader2 } from "lucide-react";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ensureUserInDatabase } from "@/actions/users";
 
-export default function ConfirmEmailPage() {
+function ConfirmEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
@@ -335,6 +335,21 @@ export default function ConfirmEmailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ConfirmEmailPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+        <div className="w-full max-w-md space-y-4 text-center">
+          <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
+          <h1 className="text-2xl font-semibold">Loading...</h1>
+        </div>
+      </div>
+    }>
+      <ConfirmEmailContent />
+    </Suspense>
   );
 }
 
