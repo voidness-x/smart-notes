@@ -14,16 +14,18 @@ This is your **quick start guide** to deploy Smart Notes. Follow these steps in 
 Open PowerShell in your project folder:
 
 ```powershell
-cd C:\Windows\System32\smart-notes
+cd C:\Users\EllaT\Projects\smart-notes
 
-# Initialize git (if not done)
-git init
-git add .
-git commit -m "Ready for deployment"
+# If not already done:
+# git init
+# git add .
+# git commit -m "Ready for deployment"
 
-# Create repo on GitHub first, then:
-git remote add origin https://github.com/YOUR_USERNAME/smart-notes.git
-git branch -M main
+# Connect to GitHub (already done for voidness-x/smart-notes):
+# git remote add origin https://github.com/voidness-x/smart-notes.git
+# git branch -M main
+
+# Push to GitHub:
 git push -u origin main
 ```
 
