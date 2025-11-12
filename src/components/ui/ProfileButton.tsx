@@ -32,7 +32,7 @@ function ProfileButton({ user }: Props) {
     if (!user) return;
     const loadInvitesCount = async () => {
       const result = await getPendingInvitesAction();
-      if (!result.errorMessage && result.invites) {
+      if (!result.errorMessage && 'invites' in result && result.invites) {
         setPendingInvitesCount(result.invites.length);
       }
     };

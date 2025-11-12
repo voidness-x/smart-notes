@@ -79,7 +79,7 @@ function ProfileDialog({ user, onClose }: Props) {
 
       if (result.errorMessage) {
         toast.error("Error", { description: result.errorMessage });
-      } else if (result.invites) {
+      } else if (!result.errorMessage && 'invites' in result && result.invites) {
         setInvites(result.invites as Invite[]);
       }
     };
