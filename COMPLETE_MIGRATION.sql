@@ -40,9 +40,11 @@ CREATE TABLE IF NOT EXISTS "public"."Note" (
     CONSTRAINT "Note_pkey" PRIMARY KEY ("id")
 );
 
--- Add foreign key
+-- Add foreign key (drop first if exists)
+ALTER TABLE "public"."Note" DROP CONSTRAINT IF EXISTS "Note_authorId_fkey";
+
 ALTER TABLE "public"."Note" 
-ADD CONSTRAINT IF NOT EXISTS "Note_authorId_fkey" 
+ADD CONSTRAINT "Note_authorId_fkey" 
 FOREIGN KEY ("authorId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- ============================================
@@ -56,12 +58,16 @@ CREATE TABLE IF NOT EXISTS "_NoteCollaborators" (
 
 CREATE INDEX IF NOT EXISTS "_NoteCollaborators_B_index" ON "_NoteCollaborators"("B");
 
+-- Add foreign keys for _NoteCollaborators (drop first if exists)
+ALTER TABLE "_NoteCollaborators" DROP CONSTRAINT IF EXISTS "_NoteCollaborators_A_fkey";
+ALTER TABLE "_NoteCollaborators" DROP CONSTRAINT IF EXISTS "_NoteCollaborators_B_fkey";
+
 ALTER TABLE "_NoteCollaborators" 
-ADD CONSTRAINT IF NOT EXISTS "_NoteCollaborators_A_fkey" 
+ADD CONSTRAINT "_NoteCollaborators_A_fkey" 
 FOREIGN KEY ("A") REFERENCES "public"."Note"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 ALTER TABLE "_NoteCollaborators" 
-ADD CONSTRAINT IF NOT EXISTS "_NoteCollaborators_B_fkey" 
+ADD CONSTRAINT "_NoteCollaborators_B_fkey" 
 FOREIGN KEY ("B") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- ============================================
@@ -84,16 +90,21 @@ CREATE INDEX IF NOT EXISTS "CollaborationInvite_receiverId_idx" ON "Collaboratio
 CREATE INDEX IF NOT EXISTS "CollaborationInvite_inviteToken_idx" ON "CollaborationInvite"("inviteToken");
 CREATE INDEX IF NOT EXISTS "CollaborationInvite_status_idx" ON "CollaborationInvite"("status");
 
+-- Add foreign keys for CollaborationInvite (drop first if exists)
+ALTER TABLE "CollaborationInvite" DROP CONSTRAINT IF EXISTS "CollaborationInvite_noteId_fkey";
+ALTER TABLE "CollaborationInvite" DROP CONSTRAINT IF EXISTS "CollaborationInvite_senderId_fkey";
+ALTER TABLE "CollaborationInvite" DROP CONSTRAINT IF EXISTS "CollaborationInvite_receiverId_fkey";
+
 ALTER TABLE "CollaborationInvite" 
-ADD CONSTRAINT IF NOT EXISTS "CollaborationInvite_noteId_fkey" 
+ADD CONSTRAINT "CollaborationInvite_noteId_fkey" 
 FOREIGN KEY ("noteId") REFERENCES "public"."Note"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 ALTER TABLE "CollaborationInvite" 
-ADD CONSTRAINT IF NOT EXISTS "CollaborationInvite_senderId_fkey" 
+ADD CONSTRAINT "CollaborationInvite_senderId_fkey" 
 FOREIGN KEY ("senderId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 ALTER TABLE "CollaborationInvite" 
-ADD CONSTRAINT IF NOT EXISTS "CollaborationInvite_receiverId_fkey" 
+ADD CONSTRAINT "CollaborationInvite_receiverId_fkey" 
 FOREIGN KEY ("receiverId") REFERENCES "public"."User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- ============================================
@@ -112,8 +123,11 @@ CREATE TABLE IF NOT EXISTS "Review" (
 CREATE INDEX IF NOT EXISTS "Review_userId_idx" ON "Review"("userId");
 CREATE INDEX IF NOT EXISTS "Review_createdAt_idx" ON "Review"("createdAt");
 
+-- Add foreign key for Review (drop first if exists)
+ALTER TABLE "Review" DROP CONSTRAINT IF EXISTS "Review_userId_fkey";
+
 ALTER TABLE "Review" 
-ADD CONSTRAINT IF NOT EXISTS "Review_userId_fkey" 
+ADD CONSTRAINT "Review_userId_fkey" 
 FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- ============================================
@@ -132,12 +146,16 @@ CREATE TABLE IF NOT EXISTS "ReviewReply" (
 CREATE INDEX IF NOT EXISTS "ReviewReply_reviewId_idx" ON "ReviewReply"("reviewId");
 CREATE INDEX IF NOT EXISTS "ReviewReply_userId_idx" ON "ReviewReply"("userId");
 
+-- Add foreign keys for ReviewReply (drop first if exists)
+ALTER TABLE "ReviewReply" DROP CONSTRAINT IF EXISTS "ReviewReply_reviewId_fkey";
+ALTER TABLE "ReviewReply" DROP CONSTRAINT IF EXISTS "ReviewReply_userId_fkey";
+
 ALTER TABLE "ReviewReply" 
-ADD CONSTRAINT IF NOT EXISTS "ReviewReply_reviewId_fkey" 
+ADD CONSTRAINT "ReviewReply_reviewId_fkey" 
 FOREIGN KEY ("reviewId") REFERENCES "Review"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 ALTER TABLE "ReviewReply" 
-ADD CONSTRAINT IF NOT EXISTS "ReviewReply_userId_fkey" 
+ADD CONSTRAINT "ReviewReply_userId_fkey" 
 FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- ============================================
@@ -164,12 +182,16 @@ CREATE INDEX IF NOT EXISTS "SupportTicket_userId_idx" ON "SupportTicket"("userId
 CREATE INDEX IF NOT EXISTS "SupportTicket_status_idx" ON "SupportTicket"("status");
 CREATE INDEX IF NOT EXISTS "SupportTicket_handledById_idx" ON "SupportTicket"("handledById");
 
+-- Add foreign keys for SupportTicket (drop first if exists)
+ALTER TABLE "SupportTicket" DROP CONSTRAINT IF EXISTS "SupportTicket_userId_fkey";
+ALTER TABLE "SupportTicket" DROP CONSTRAINT IF EXISTS "SupportTicket_handledById_fkey";
+
 ALTER TABLE "SupportTicket" 
-ADD CONSTRAINT IF NOT EXISTS "SupportTicket_userId_fkey" 
+ADD CONSTRAINT "SupportTicket_userId_fkey" 
 FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 ALTER TABLE "SupportTicket" 
-ADD CONSTRAINT IF NOT EXISTS "SupportTicket_handledById_fkey" 
+ADD CONSTRAINT "SupportTicket_handledById_fkey" 
 FOREIGN KEY ("handledById") REFERENCES "public"."User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- ============================================
