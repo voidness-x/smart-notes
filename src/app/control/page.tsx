@@ -24,7 +24,7 @@ async function ControlPage() {
   }
 
   // Get user profile data
-  let userProfile = await prisma.user.findUnique({
+  const userProfile = await prisma.user.findUnique({
     where: { id: user.id },
     select: {
       id: true,

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { User } from "lucide-react";
 import { Button } from "./button";
 import {
   Dialog,
@@ -28,10 +27,9 @@ function ProfileButton({ user }: Props) {
   const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
   const router = useRouter();
 
-  if (!user) return null;
-
   // Load pending invites count
   useEffect(() => {
+    if (!user) return;
     const loadInvitesCount = async () => {
       const result = await getPendingInvitesAction();
       if (!result.errorMessage && result.invites) {
@@ -44,7 +42,9 @@ function ProfileButton({ user }: Props) {
     if (open) {
       loadInvitesCount();
     }
-  }, [open]);
+  }, [open, user]);
+  
+  if (!user) return null;
 
   // Get initials from email for fallback
   const getInitials = (email: string) => {
