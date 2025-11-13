@@ -19,6 +19,15 @@ export const loginAction = async (email: string, password: string) => {
             return { errorMessage: "Invalid email or password", success: false };
         }
 
+        // Validate Supabase configuration before attempting login
+        if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+            console.error("Missing Supabase environment variables in loginAction");
+            return { 
+                errorMessage: "Authentication service is not properly configured. Please contact support.", 
+                success: false 
+            };
+        }
+
         const {auth} = await createClient();
 
         const {data, error} = await auth.signInWithPassword({
