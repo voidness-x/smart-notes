@@ -64,7 +64,13 @@ async function HomePage({ searchParams }: Props) {
         <AskAIButton user={user} />
         <NewNoteButton user={user} />
       </div>
-      <NoteTextInput noteId={noteId} startingNoteText={note?.text || ""} startingTags={note?.tags || []} startingTitle={note?.title || "No title"} />
+      <NoteTextInput 
+        noteId={noteId} 
+        startingNoteText={note?.text || ""} 
+        startingTags={note?.tags || []} 
+        startingTitle={note?.title || "No title"}
+        isCollaborative={isCollaborative}
+      />
       
     </div>
   );

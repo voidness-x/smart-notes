@@ -8,9 +8,10 @@ import TextAlign from "@tiptap/extension-text-align";
 import Placeholder from "@tiptap/extension-placeholder";
 import Image from "@tiptap/extension-image";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { debounceTimeout } from "@/lib/constants";
 import useNote from "@/hooks/useNote";
+import { useRealtimeNote } from "@/hooks/useRealtimeNote";
 import { updateNoteAction, updateNoteTagsAction, updateNoteTitleAction } from "@/actions/notes";
 import { Button } from "./button";
 import { 
@@ -42,18 +43,21 @@ type Props = {
     startingNoteText: string;
     startingTags?: string[];
     startingTitle?: string;
+    isCollaborative?: boolean;
 };
 
 let updateTimeout: NodeJS.Timeout;
 let titleUpdateTimeout: NodeJS.Timeout;
 let noteTextUpdateTimeout: NodeJS.Timeout;
 
-function NoteTextInput({noteId, startingNoteText, startingTags = [], startingTitle = ""}: Props) {
+function NoteTextInput({noteId, startingNoteText, startingTags = [], startingTitle = "", isCollaborative = false}: Props) {
     const noteIdParam = useSearchParams().get("noteId") || ""
     const {noteText, setNoteText, noteTitle, setNoteTitle, noteTags, setNoteTags} = useNote();
     
     // Ref to prevent circular updates when programmatically setting content
     const isUpdatingFromStateRef = useRef(false);
+    const isRealtimeUpdateRef = useRef(false);
+    const lastSavedContentRef = useRef<string>("");
 
     const [wordCount, setWordCount] = useState(0);
     const [charCount, setCharCount] = useState(0);
@@ -135,7 +139,8 @@ function NoteTextInput({noteId, startingNoteText, startingTags = [], startingTit
         },
         onUpdate: ({ editor }) => {
             // Don't update global state if we're programmatically updating the editor
-            if (isUpdatingFromStateRef.current) {
+            // or if this is a real-time update from another user
+            if (isUpdatingFromStateRef.current || isRealtimeUpdateRef.current) {
                 return;
             }
             
@@ -162,12 +167,67 @@ function NoteTextInput({noteId, startingNoteText, startingTags = [], startingTit
         setSaveStatus("saving");
         clearTimeout(updateTimeout);
         updateTimeout = setTimeout(async () => {
+                // Mark as local update to prevent real-time subscription from triggering
+                if (isCollaborative && noteIdParam === noteId) {
+                    markLocalUpdate();
+                }
                 await updateNoteAction(noteId, html);
+                lastSavedContentRef.current = html;
           setSaveStatus("saved");
           setTimeout(() => setSaveStatus(""), 1500);
         }, debounceTimeout);
         },
     });
+
+    // Real-time collaboration: Subscribe to note changes
+    const handleRealtimeNoteChange = useCallback((newText: string, newTitle?: string, newTags?: string[]) => {
+        if (!editor || noteIdParam !== noteId) return;
+        
+        // Mark as real-time update to prevent triggering onUpdate
+        isRealtimeUpdateRef.current = true;
+        isUpdatingFromStateRef.current = true;
+
+        // Update editor content if text changed and is not empty
+        if (newText && newText.trim() && newText !== lastSavedContentRef.current) {
+            const currentContent = editor.getHTML();
+            // Only update if content is actually different
+            if (currentContent !== newText) {
+                editor.commands.setContent(newText);
+                lastSavedContentRef.current = newText;
+                // Also update global state for sidebar sync
+                setNoteText(newText);
+            }
+        }
+
+        // Update title if changed
+        if (newTitle !== undefined && newTitle !== title) {
+            setTitle(newTitle);
+            if (noteIdParam === noteId) {
+                setNoteTitle(newTitle);
+            }
+        }
+
+        // Update tags if changed
+        if (newTags !== undefined && JSON.stringify(newTags) !== JSON.stringify(tags)) {
+            setTags(newTags);
+            if (noteIdParam === noteId) {
+                setNoteTags(newTags);
+            }
+        }
+
+        // Reset flags after update
+        setTimeout(() => {
+            isRealtimeUpdateRef.current = false;
+            isUpdatingFromStateRef.current = false;
+        }, 100);
+    }, [editor, noteIdParam, noteId, title, tags, setNoteTitle, setNoteTags, setNoteText]);
+
+    // Enable real-time updates only for collaborative notes
+    const { markLocalUpdate } = useRealtimeNote(
+        isCollaborative && noteIdParam === noteId ? noteId : null,
+        handleRealtimeNoteChange,
+        isCollaborative
+    );
 
     // Track previous noteId to detect note switches
     const prevNoteIdRef = useRef<string>("");
@@ -257,6 +317,10 @@ function NoteTextInput({noteId, startingNoteText, startingTags = [], startingTit
             if (noteIdParam === noteId) {
                 setNoteTags(newTags);
             }
+            // Mark as local update for collaborative notes
+            if (isCollaborative && noteIdParam === noteId) {
+                markLocalUpdate();
+            }
             updateNoteTagsAction(noteId, newTags);
             setTagInput("");
         }
@@ -268,6 +332,10 @@ function NoteTextInput({noteId, startingNoteText, startingTags = [], startingTit
         // Update global state immediately for sidebar sync
         if (noteIdParam === noteId) {
             setNoteTags(newTags);
+        }
+        // Mark as local update for collaborative notes
+        if (isCollaborative && noteIdParam === noteId) {
+            markLocalUpdate();
         }
         updateNoteTagsAction(noteId, newTags);
     };
@@ -288,7 +356,7 @@ function NoteTextInput({noteId, startingNoteText, startingTags = [], startingTit
         }
     };
 
-    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newTitle = e.target.value;
         setTitle(newTitle);
         // Always update global state when user types (only if this note is active)
@@ -302,6 +370,10 @@ function NoteTextInput({noteId, startingNoteText, startingTags = [], startingTit
         // Debounced save - save "No title" if empty
         clearTimeout(titleUpdateTimeout);
         titleUpdateTimeout = setTimeout(async () => {
+            // Mark as local update for collaborative notes
+            if (isCollaborative && noteIdParam === noteId) {
+                markLocalUpdate();
+            }
             const titleToSave = newTitle.trim() || "No title";
             await updateNoteTitleAction(noteId, titleToSave);
         }, debounceTimeout);
