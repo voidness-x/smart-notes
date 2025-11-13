@@ -40,9 +40,11 @@ function ForgotPasswordForm() {
       // Call Supabase client-side so PKCE code_verifier is stored in browser
       // This is required for password reset links to work with PKCE
       const supabase = createClient();
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' 
-        ? `${window.location.protocol}//${window.location.host}`
-        : "http://localhost:3000");
+      // Always use the current window location origin (works in all environments)
+      // This ensures mobile devices get the correct production URL, not localhost
+      const baseUrl = typeof window !== 'undefined' 
+        ? window.location.origin
+        : (process.env.NEXT_PUBLIC_BASE_URL || 'https://smart-notes-olive-alpha.vercel.app');
 
       const { error } = await supabase.auth.resetPasswordForEmail(emailValidation.data, {
         redirectTo: `${baseUrl}/reset-password`,

@@ -148,9 +148,17 @@ export const signUpAction = async (email: string, password: string) => {
 
         // Get base URL for email confirmation redirect
         // Never use localhost in production - always use production URL
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
-            (process.env.NODE_ENV === 'production' ? 'https://smart-notes-olive-alpha.vercel.app' : 'http://localhost:3000');
+        // Check environment first, then VERCEL_URL, then production fallback
+        let baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+        if (!baseUrl && process.env.VERCEL_URL) {
+            baseUrl = `https://${process.env.VERCEL_URL}`;
+        }
+        if (!baseUrl) {
+            // In production, always use production URL, never localhost
+            baseUrl = process.env.NODE_ENV === 'production' 
+                ? 'https://smart-notes-olive-alpha.vercel.app' 
+                : 'http://localhost:3000';
+        }
 
         const {data, error} = await auth.signUp({
             email: emailValidation.data, 
@@ -311,9 +319,17 @@ export const resendConfirmationEmailAction = async (email: string) => {
 
         // Get base URL for email confirmation redirect
         // Never use localhost in production - always use production URL
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
-            (process.env.NODE_ENV === 'production' ? 'https://smart-notes-olive-alpha.vercel.app' : 'http://localhost:3000');
+        // Check environment first, then VERCEL_URL, then production fallback
+        let baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+        if (!baseUrl && process.env.VERCEL_URL) {
+            baseUrl = `https://${process.env.VERCEL_URL}`;
+        }
+        if (!baseUrl) {
+            // In production, always use production URL, never localhost
+            baseUrl = process.env.NODE_ENV === 'production' 
+                ? 'https://smart-notes-olive-alpha.vercel.app' 
+                : 'http://localhost:3000';
+        }
 
         const { data, error } = await auth.resend({
             type: "signup",

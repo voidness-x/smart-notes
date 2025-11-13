@@ -60,7 +60,17 @@ export const createInviteLinkAction = async (noteId: string) => {
       data: { noteId: validId, senderId: user.id, inviteToken, expiresAt, status: "pending" },
     });
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    // Get base URL for invite link - never use localhost in production
+    let baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    if (!baseUrl && process.env.VERCEL_URL) {
+        baseUrl = `https://${process.env.VERCEL_URL}`;
+    }
+    if (!baseUrl) {
+        // In production, always use production URL, never localhost
+        baseUrl = process.env.NODE_ENV === 'production' 
+            ? 'https://smart-notes-olive-alpha.vercel.app' 
+            : 'http://localhost:3000';
+    }
     return { errorMessage: null, inviteLink: `${baseUrl}/notes?invite=${inviteToken}` };
   } catch (error) {
     return handleError(error);
