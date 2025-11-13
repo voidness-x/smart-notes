@@ -62,11 +62,16 @@ export function useRealtimeNote(
           );
         }
       )
-      .subscribe((status) => {
+      .subscribe((status, err) => {
         if (status === "SUBSCRIBED") {
           console.log(`✅ Subscribed to real-time updates for note: ${noteId}`);
         } else if (status === "CHANNEL_ERROR") {
-          console.error("❌ Error subscribing to real-time updates:", status);
+          console.error("❌ Error subscribing to real-time updates:", {
+            status,
+            error: err,
+            noteId,
+            message: "Realtime may not be enabled for the Note table in Supabase. Go to Database → Replication and enable Realtime for the Note table."
+          });
         } else if (status === "TIMED_OUT") {
           console.warn("⏱️ Real-time subscription timed out for note:", noteId);
         } else if (status === "CLOSED") {
