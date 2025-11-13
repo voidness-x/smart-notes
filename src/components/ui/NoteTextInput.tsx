@@ -356,7 +356,7 @@ function NoteTextInput({noteId, startingNoteText, startingTags = [], startingTit
         }
     };
 
-        const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newTitle = e.target.value;
         setTitle(newTitle);
         // Always update global state when user types (only if this note is active)

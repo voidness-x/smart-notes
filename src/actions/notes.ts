@@ -90,6 +90,46 @@ export const updateNoteTitleAction = async (noteId: string, title: string) => {
   }
 };
 
+// New action to check if note has been updated (for polling-based real-time)
+export const checkNoteUpdateAction = async (noteId: string, lastUpdatedAt: string) => {
+  try {
+    const { noteId: validId } = await validateNoteAccess(noteId);
+    const note = await prisma.note.findUnique({
+      where: { id: validId },
+      select: {
+        text: true,
+        title: true,
+        tags: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!note) {
+      return { errorMessage: "Note not found", hasUpdate: false };
+    }
+
+    // Check if note was updated after the last known update time
+    const noteUpdatedAt = new Date(note.updatedAt).getTime();
+    const lastKnownUpdate = new Date(lastUpdatedAt).getTime();
+    const hasUpdate = noteUpdatedAt > lastKnownUpdate;
+
+    if (hasUpdate) {
+      return {
+        errorMessage: null,
+        hasUpdate: true,
+        text: note.text,
+        title: note.title || "No title",
+        tags: note.tags || [],
+        updatedAt: note.updatedAt.toISOString(),
+      };
+    }
+
+    return { errorMessage: null, hasUpdate: false };
+  } catch (error) {
+    return { ...handleError(error), hasUpdate: false };
+  }
+};
+
 export const askAIAboutNotesAction = async (
   newQuestions: string[],
   responses: string[],
@@ -110,52 +150,34 @@ export const askAIAboutNotesAction = async (
     if (notes.length === 0) return "You don't have any notes yet.";
 
     const formattedNotes = notes
-      .map(note => `Text: ${note.text.substring(0, 5000)}\nCreated: ${note.createdAt}\nUpdated: ${note.updatedAt}`)
+      .map((note, index) => {
+        const date = new Date(note.createdAt).toLocaleDateString();
+        const plainText = note.text.replace(/<[^>]*>/g, "").trim();
+        return `Note ${index + 1} (Created: ${date}):\n${plainText}`;
+      })
       .join("\n\n");
 
-    const messages: ChatCompletionMessageParam[] = [{
-      role: "system",
-      content: `You are a helpful assistant that answers questions about a user's notes. 
-Keep answers succinct. Format responses in clean HTML using <p>, <strong>, <em>, <ul>, <ol>, <li>, <h1>-<h6>, <br>.
-Do NOT use inline styles, JavaScript, or dangerous content.
-
-User's notes:
-${formattedNotes}`,
-    }];
-
-    newQuestions.forEach((q, i) => {
-      messages.push({ role: "user", content: q.substring(0, 1000) });
-      if (responses[i]) messages.push({ role: "assistant", content: responses[i] });
-    });
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: "system",
+        content:
+          "You are a helpful assistant that answers questions about the user's notes. The user will provide their notes and ask questions. Answer based on the notes provided. If the answer is not in the notes, say so.",
+      },
+      ...responses.map((r) => ({ role: "assistant" as const, content: r })),
+      {
+        role: "user",
+        content: `Here are my notes:\n\n${formattedNotes}\n\nQuestions: ${newQuestions.join(", ")}`,
+      },
+    ];
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages,
-      max_tokens: 1000,
       temperature: 0.7,
     });
 
-    return sanitizeHTML(completion.choices[0].message.content || "An error occurred");
-  } catch (error: any) {
-    console.error("AI error:", error);
-    
-    // Check for specific error types
-    if (error?.status === 401 || error?.message?.includes("api key") || error?.message?.includes("API key")) {
-      return "Error: OpenAI API key is missing or invalid. Please check your API configuration.";
-    }
-    
-    if (error?.status === 429 || error?.message?.includes("rate limit") || error?.message?.includes("Rate limit")) {
-      return "Error: Rate limit exceeded. Please wait a moment and try again.";
-    }
-    
-    if (error?.status === 402 || error?.message?.includes("insufficient_quota") || error?.message?.includes("quota") || error?.message?.includes("credits")) {
-      return "Error: Insufficient API credits. Please add credits to your OpenAI account and try again.";
-    }
-    
-    if (error?.message) {
-      return `Error: ${error.message}. Please try again or check your API configuration.`;
-    }
-    
-    return "An error occurred while processing your request. Please check your API configuration and try again.";
+    return completion.choices[0]?.message?.content || "I couldn't generate a response.";
+  } catch (error) {
+    return handleError(error).errorMessage || "Failed to get AI response.";
   }
 };

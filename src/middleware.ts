@@ -81,16 +81,16 @@ export async function updateSession(request: NextRequest) {
 
         // If no note exists, create a new one
         const createResponse = await fetch(`${baseUrl}/api/create-new-note?userId=${user.id}`, {
-          method: "POST",
+            method: "POST",
           headers: { "Content-Type": "application/json", 'Cookie': cookieHeader },
         });
 
         if (createResponse.ok) {
           const { noteId } = await createResponse.json();
-          if (noteId) {
-            const url = request.nextUrl.clone();
-            url.searchParams.set("noteId", noteId);
-            return NextResponse.redirect(url);
+        if (noteId) {
+          const url = request.nextUrl.clone();
+          url.searchParams.set("noteId", noteId);
+          return NextResponse.redirect(url);
           }
         }
       } catch (error) {
