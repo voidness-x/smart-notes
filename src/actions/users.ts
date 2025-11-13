@@ -298,13 +298,21 @@ export const resendConfirmationEmailAction = async (email: string) => {
             return { errorMessage: emailValidation.error };
         }
 
+        // Validate Supabase configuration
+        if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+            console.error("Missing Supabase environment variables in resendConfirmationEmailAction");
+            return { 
+                errorMessage: "Email service is not properly configured. Please contact support.",
+            };
+        }
+
         const { auth } = await createClient();
 
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (process.env.VERCEL_URL 
             ? `https://${process.env.VERCEL_URL}` 
             : "http://localhost:3000");
 
-        const { error } = await auth.resend({
+        const { data, error } = await auth.resend({
             type: "signup",
             email: emailValidation.data,
             options: {
@@ -313,14 +321,52 @@ export const resendConfirmationEmailAction = async (email: string) => {
         });
 
         if (error) {
+            // Log the error for debugging
+            console.error("Resend confirmation email error:", {
+                message: error.message,
+                code: error.code,
+                status: error.status,
+                fullError: error
+            });
+
+            // Check for specific error types
+            if (error.message?.includes("rate limit") || error.message?.includes("too many")) {
+                return { 
+                    errorMessage: "Too many requests. Please wait a few minutes before requesting another email.",
+                };
+            }
+            
+            if (error.message?.includes("not found") || error.message?.includes("does not exist")) {
+                return { 
+                    errorMessage: "No account found with this email address. Please sign up first.",
+                };
+            }
+
+            if (error.message?.includes("already confirmed") || error.message?.includes("already verified")) {
+                return { 
+                    errorMessage: "This email is already confirmed. You can log in now.",
+                };
+            }
+
             return { 
-                errorMessage: "Failed to resend confirmation email. Please try again.",
+                errorMessage: `Failed to resend confirmation email: ${error.message || "Please try again."}`,
             };
         }
 
         return { errorMessage: null };
-    } catch (error) {
-        return { errorMessage: "Failed to resend confirmation email. Please try again." };
+    } catch (error: any) {
+        // Log the error for debugging
+        console.error("Resend confirmation email exception:", {
+            message: error?.message,
+            code: error?.code,
+            stack: error?.stack,
+            name: error?.name,
+            fullError: error
+        });
+        
+        return { 
+            errorMessage: `Failed to resend confirmation email: ${error?.message || "Please try again."}`,
+        };
     }
 };
 

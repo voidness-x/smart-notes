@@ -89,6 +89,9 @@ function AuthForm({ type }: Props) {
                         const emailConfirmed = (result as any).emailConfirmed === true;
                         const emailSent = (result as any).emailSent === true;
                         
+                        // Store email for potential resend
+                        setLastLoginEmail(email);
+                        
                         let description = "";
                         if (emailConfirmed) {
                             // If email is confirmed, user can log in immediately
@@ -100,9 +103,14 @@ function AuthForm({ type }: Props) {
                             description = "Account created! However, no confirmation email was sent. This might be due to Supabase email configuration. You can try logging in - if email confirmation is disabled, you should be able to log in directly.";
                         }
                         
+                        // Show resend button if email wasn't confirmed
+                        if (!emailConfirmed) {
+                            setShowResendConfirmation(true);
+                        }
+                        
                         toast.success("Signed Up", {
                             description: description,
-                            duration: 8000, // Show longer for important message
+                            duration: 10000, // Show longer for important message
                         });
                         router.push("/login");
                     } else {
@@ -192,6 +200,30 @@ function AuthForm({ type }: Props) {
                             </button>
                         )}
                     </>
+                )}
+                {!isLoginForm && showResendConfirmation && lastLoginEmail && (
+                    <button
+                        type="button"
+                        onClick={async () => {
+                            startTransition(async () => {
+                                const result = await resendConfirmationEmailAction(lastLoginEmail);
+                                if (result.errorMessage) {
+                                    toast.error("Error", {
+                                        description: result.errorMessage,
+                                    });
+                                } else {
+                                    toast.success("Confirmation email sent", {
+                                        description: "Please check your email (and spam folder) for the confirmation link.",
+                                        duration: 8000,
+                                    });
+                                }
+                            });
+                        }}
+                        disabled={isPending}
+                        className={`text-xs text-blue-500 underline text-center ${isPending ? "pointer-events-none opacity-50" : ""}`}
+                    >
+                        Resend confirmation email
+                    </button>
                 )}
                 <p className="text-xs">
                     {isLoginForm
