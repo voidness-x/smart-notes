@@ -61,9 +61,14 @@ function AuthForm({ type }: Props) {
                             description: "Login failed. Please try again.",
                         });
                     }
-                } catch (err) {
+                } catch (err: any) {
+                    // Log the error for debugging
+                    console.error("AuthForm login error:", err);
+                    
+                    // Show the actual error message if available
+                    const errorMessage = err?.message || "An unexpected error occurred. Please try again.";
                     toast.error("Error", {
-                        description: "An unexpected error occurred. Please try again.",
+                        description: errorMessage,
                     });
                 }
             });
@@ -106,9 +111,14 @@ function AuthForm({ type }: Props) {
                             description: "Sign up failed. Please try again.",
                         });
                     }
-                } catch (err) {
+                } catch (err: any) {
+                    // Log the error for debugging
+                    console.error("AuthForm signup error:", err);
+                    
+                    // Show the actual error message if available
+                    const errorMessage = err?.message || "An unexpected error occurred. Please try again.";
                     toast.error("Error", {
-                        description: "An unexpected error occurred. Please try again.",
+                        description: errorMessage,
                     });
                 }
             });
