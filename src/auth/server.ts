@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 
 export async function createClient() {
   try {
-    const cookieStore = await cookies()
+  const cookieStore = await cookies()
 
     // Validate environment variables
     if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
@@ -32,32 +32,32 @@ export async function createClient() {
             },
           },
         },
-      );
-    }
+    );
+  }
 
-    const client = createServerClient (
+  const client = createServerClient (
         process.env.SUPABASE_URL,
         process.env.SUPABASE_ANON_KEY,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
             } catch (error) {
               // Log cookie setting errors in production for debugging
               console.error("Error setting cookies:", error);
             }
-          },
         },
       },
-    );
+    },
+  );
 
-    return client;
+return client;
   } catch (error) {
     // If creating client fails, log and return a minimal client
     // This prevents server component render errors

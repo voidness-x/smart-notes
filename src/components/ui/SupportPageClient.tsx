@@ -183,7 +183,7 @@ function SupportPageClient({ user, tickets: initialTickets }: Props) {
       {/* Contact Email */}
       <div className="text-center">
         <p className="text-sm text-muted-foreground">
-          Contact us at: <a href="mailto:smart.note.contact@gamil.com" className="text-primary hover:underline">smart.note.contact@gamil.com</a>
+          Contact us at: <a href="mailto:smart.notes.contact@gmail.com" className="text-primary hover:underline">smart.notes.contact@gmail.com</a>
         </p>
       </div>
 

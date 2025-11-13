@@ -331,7 +331,7 @@ export const resendConfirmationEmailAction = async (email: string) => {
 
             // Check for specific error types
             if (error.message?.includes("rate limit") || error.message?.includes("too many")) {
-                return { 
+            return { 
                     errorMessage: "Too many requests. Please wait a few minutes before requesting another email.",
                 };
             }
