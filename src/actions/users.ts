@@ -147,9 +147,10 @@ export const signUpAction = async (email: string, password: string) => {
         const {auth} = await createClient();
 
         // Get base URL for email confirmation redirect
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (process.env.VERCEL_URL 
-            ? `https://${process.env.VERCEL_URL}` 
-            : "http://localhost:3000");
+        // Never use localhost in production - always use production URL
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+            (process.env.NODE_ENV === 'production' ? 'https://smart-notes-olive-alpha.vercel.app' : 'http://localhost:3000');
 
         const {data, error} = await auth.signUp({
             email: emailValidation.data, 
@@ -308,9 +309,11 @@ export const resendConfirmationEmailAction = async (email: string) => {
 
         const { auth } = await createClient();
 
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (process.env.VERCEL_URL 
-            ? `https://${process.env.VERCEL_URL}` 
-            : "http://localhost:3000");
+        // Get base URL for email confirmation redirect
+        // Never use localhost in production - always use production URL
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+            (process.env.NODE_ENV === 'production' ? 'https://smart-notes-olive-alpha.vercel.app' : 'http://localhost:3000');
 
         const { data, error } = await auth.resend({
             type: "signup",

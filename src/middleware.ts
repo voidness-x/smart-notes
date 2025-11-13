@@ -60,9 +60,12 @@ export async function updateSession(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${new URL(request.url).protocol}//${new URL(request.url).host}`;
+        // Use the request URL to determine base URL (works in all environments)
+        const requestUrl = new URL(request.url);
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${requestUrl.protocol}//${requestUrl.host}`;
         const cookieHeader = request.headers.get('cookie') || '';
         
+        // Try to fetch the newest note first
         const fetchResponse = await fetch(`${baseUrl}/api/fetch-newest-note?userId=${user.id}`, {
           headers: { 'Cookie': cookieHeader },
         });
@@ -76,20 +79,24 @@ export async function updateSession(request: NextRequest) {
           }
         }
 
+        // If no note exists, create a new one
         const createResponse = await fetch(`${baseUrl}/api/create-new-note?userId=${user.id}`, {
-            method: "POST",
+          method: "POST",
           headers: { "Content-Type": "application/json", 'Cookie': cookieHeader },
         });
 
         if (createResponse.ok) {
           const { noteId } = await createResponse.json();
-        if (noteId) {
-          const url = request.nextUrl.clone();
-          url.searchParams.set("noteId", noteId);
-          return NextResponse.redirect(url);
+          if (noteId) {
+            const url = request.nextUrl.clone();
+            url.searchParams.set("noteId", noteId);
+            return NextResponse.redirect(url);
           }
         }
-      } catch {}
+      } catch (error) {
+        // Log error in production for debugging, but don't block the request
+        console.error("Error in middleware note selection:", error);
+      }
     }
   }
 

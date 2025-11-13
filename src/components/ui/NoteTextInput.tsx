@@ -275,6 +275,15 @@ function NoteTextInput({noteId, startingNoteText, startingTags = [], startingTit
     const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             e.preventDefault();
+            if (tagInput.trim()) {
+                addTag(tagInput);
+            }
+        }
+    };
+
+    const handleTagInputBlur = () => {
+        // Add tag when input loses focus (mobile keyboard dismisses)
+        if (tagInput.trim()) {
             addTag(tagInput);
         }
     };
@@ -632,6 +641,7 @@ return (
                             value={tagInput}
                             onChange={(e) => setTagInput(e.target.value)}
                             onKeyDown={handleTagInputKeyDown}
+                            onBlur={handleTagInputBlur}
                             placeholder="Add tag..."
                             className="h-7 w-24 text-xs"
                         />
