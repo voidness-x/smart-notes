@@ -13,17 +13,7 @@ async function ControlPage() {
     redirect("/login");
   }
 
-  // Check if user is blocked
-  const userBlockedCheck = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { blocked: true },
-  });
-
-  if (userBlockedCheck?.blocked) {
-    redirect("/blocked");
-  }
-
-  // Get user profile data
+  // Get user profile data first (needed for role check)
   const userProfile = await prisma.user.findUnique({
     where: { id: user.id },
     select: {
@@ -32,6 +22,7 @@ async function ControlPage() {
       name: true,
       avatarUrl: true,
       role: true,
+      blocked: true,
     },
   });
 
@@ -39,20 +30,23 @@ async function ControlPage() {
     redirect("/login");
   }
 
+  if (userProfile.blocked) {
+    redirect("/blocked");
+  }
+
   if (userProfile.role !== "admin" && userProfile.role !== "supervisor") {
     redirect("/notes");
   }
 
-  // Get all users
-  const usersResult = await getAllUsersAction();
+  // Parallelize data fetching for better performance
+  const [usersResult, ticketsResult, statsResult] = await Promise.all([
+    getAllUsersAction(),
+    getAllSupportTicketsAction(),
+    getTicketStatsAction(),
+  ]);
+
   const users = usersResult.users || [];
-
-  // Get all tickets
-  const ticketsResult = await getAllSupportTicketsAction();
   const tickets = ticketsResult.tickets || [];
-
-  // Get ticket stats
-  const statsResult = await getTicketStatsAction();
   const stats = statsResult.stats || [];
 
   return (

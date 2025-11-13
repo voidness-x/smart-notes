@@ -185,9 +185,37 @@ function ConfirmEmailContent() {
         return;
       }
 
-      // PRIORITY 4: If confirmation failed, check for errors
-      // Only show error if we actually tried to confirm and it failed
+      // PRIORITY 4: Double-check session one more time before showing error
+      // Sometimes the session is set asynchronously, so wait a bit more
       if (confirmationAttempted && sessionError) {
+        // Wait a bit longer for async session setting
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const { data: { session: finalSessionCheck } } = await supabase.auth.getSession();
+        
+        // If we have a session now, the confirmation actually succeeded
+        if (finalSessionCheck?.user) {
+          console.log("Session found after error - confirmation actually succeeded!");
+          try {
+            const dbResult = await ensureUserInDatabase(
+              finalSessionCheck.user.id,
+              finalSessionCheck.user.email || ""
+            );
+            if (dbResult.errorMessage) {
+              console.error("Failed to ensure user in database:", dbResult.errorMessage);
+            }
+          } catch (err) {
+            console.error("Error ensuring user in database:", err);
+          }
+          
+          setStatus("success");
+          window.history.replaceState(null, "", "/auth/confirm");
+          setTimeout(() => {
+            router.push("/notes");
+          }, 2000);
+          return;
+        }
+        
+        // No session found - show error
         console.error("Error confirming email:", sessionError);
         // Check the actual error from the session exchange
         if (sessionError.message?.includes("expired") || sessionError.message?.includes("OTP") || errorCode === "otp_expired") {

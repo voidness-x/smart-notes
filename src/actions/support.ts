@@ -142,17 +142,29 @@ export const getTicketStatsAction = async () => {
       _count: { id: true },
     });
 
-    const statsWithUsers = await Promise.all(
-      stats
-        .filter(stat => stat.handledById)
-        .map(async (stat) => ({
-          handler: await prisma.user.findUnique({
-            where: { id: stat.handledById! },
-            select: userSelect,
-          }),
-          count: stat._count.id,
-        }))
+    // Get unique handler IDs
+    const handlerIds = [...new Set(stats.filter(stat => stat.handledById).map(stat => stat.handledById!))];
+    
+    // Fetch all users in parallel instead of sequentially
+    const users = await Promise.all(
+      handlerIds.map(id => 
+        prisma.user.findUnique({
+          where: { id },
+          select: userSelect,
+        })
+      )
     );
+
+    // Create a map for quick lookup
+    const userMap = new Map(users.map((user, index) => [handlerIds[index], user]));
+
+    // Build stats with users
+    const statsWithUsers = stats
+      .filter(stat => stat.handledById)
+      .map(stat => ({
+        handler: userMap.get(stat.handledById!),
+        count: stat._count.id,
+      }));
 
     return { errorMessage: null, stats: statsWithUsers };
   } catch (error) {

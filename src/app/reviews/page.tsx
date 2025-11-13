@@ -7,31 +7,22 @@ import { redirect } from "next/navigation";
 async function ReviewsPage() {
   const user = await getUser();
 
-  // Check if user is blocked
-  if (user) {
-    const userData = await prisma.user.findUnique({
+  // Parallelize all queries for better performance
+  const [userData, reviewsResult, reviewResult, profile] = await Promise.all([
+    // Check if user is blocked
+    user ? prisma.user.findUnique({
       where: { id: user.id },
       select: { blocked: true },
-    });
-
-    if (userData?.blocked) {
-      redirect("/blocked");
-    }
-  }
-
-  // Get all reviews
-  const reviewsResult = await getReviewsAction();
-  const reviews = reviewsResult.reviews || [];
-
-  // Get user's review if logged in
-  let userReview = null;
-  let userProfile = null;
-  if (user) {
-    const reviewResult = await getUserReviewAction();
-    userReview = reviewResult.review || null;
-
+    }) : Promise.resolve(null),
+    
+    // Get all reviews
+    getReviewsAction(),
+    
+    // Get user's review if logged in
+    user ? getUserReviewAction() : Promise.resolve({ errorMessage: null, review: null }),
+    
     // Get user profile
-    let profile = await prisma.user.findUnique({
+    user ? prisma.user.findUnique({
       where: { id: user.id },
       select: {
         id: true,
@@ -40,16 +31,39 @@ async function ReviewsPage() {
         avatarUrl: true,
         role: true,
       },
-    });
+    }) : Promise.resolve(null),
+  ]);
 
-    // If user doesn't exist in database but is authenticated, create them
-    if (!profile && user.email) {
-      try {
-        profile = await prisma.user.create({
-          data: {
-            id: user.id,
-            email: user.email,
-          },
+  // Check if user is blocked
+  if (userData?.blocked) {
+    redirect("/blocked");
+  }
+
+  const reviews = reviewsResult.reviews || [];
+  let userReview = reviewResult.review || null;
+  let userProfile = profile;
+
+  // If user doesn't exist in database but is authenticated, create them
+  if (user && !userProfile && user.email) {
+    try {
+      userProfile = await prisma.user.create({
+        data: {
+          id: user.id,
+          email: user.email,
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          avatarUrl: true,
+          role: true,
+        },
+      });
+    } catch (error: any) {
+      // If user was created by another request (race condition), fetch it
+      if (error?.code === 'P2002') {
+        userProfile = await prisma.user.findUnique({
+          where: { id: user.id },
           select: {
             id: true,
             email: true,
@@ -58,23 +72,8 @@ async function ReviewsPage() {
             role: true,
           },
         });
-      } catch (error: any) {
-        // If user was created by another request (race condition), fetch it
-        if (error?.code === 'P2002') {
-          profile = await prisma.user.findUnique({
-            where: { id: user.id },
-            select: {
-              id: true,
-              email: true,
-              name: true,
-              avatarUrl: true,
-              role: true,
-            },
-          });
-        }
       }
     }
-    userProfile = profile;
   }
 
   // Dates are already serialized by the server actions, so we can use them directly
