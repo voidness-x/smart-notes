@@ -79,15 +79,29 @@ export const loginAction = async (email: string, password: string) => {
         return { errorMessage: null, success: true};
 
     } catch (error: any) {
-        // Log the actual error for debugging
-        console.error("Login error:", error?.message || error);
-        
-        // Return user-friendly error message
-        if (error?.message?.includes("Supabase") || error?.message?.includes("environment")) {
-            return { errorMessage: "Authentication service error. Please check configuration.", success: false };
+        // Log the actual error for debugging (only in development)
+        if (process.env.NODE_ENV === 'development') {
+            console.error("Login error:", error);
         }
         
-        return { errorMessage: "An error occurred during login. Please try again.", success: false };
+        // Check for specific error types
+        if (error?.code === 'P1001') {
+            return { errorMessage: "Database connection failed. Please try again in a moment.", success: false };
+        }
+        
+        if (error?.message?.includes("Prisma") || error?.message?.includes("database")) {
+            return { errorMessage: "Database error. Please try again.", success: false };
+        }
+        
+        if (error?.message?.includes("SUPABASE") || error?.message?.includes("Supabase")) {
+            return { errorMessage: "Authentication service error. Please try again.", success: false };
+        }
+        
+        // Return generic error message
+        return { 
+            errorMessage: error?.message || "An error occurred during login. Please try again.", 
+            success: false 
+        };
     } 
 };
 

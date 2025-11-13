@@ -4,18 +4,18 @@ import { cookies } from 'next/headers'
 export async function createClient() {
   const cookieStore = await cookies()
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-      "Missing Supabase environment variables. Please set SUPABASE_URL and SUPABASE_ANON_KEY in your environment variables."
-    );
+  // Validate environment variables
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+    console.error("Missing Supabase environment variables:", {
+      hasUrl: !!process.env.SUPABASE_URL,
+      hasKey: !!process.env.SUPABASE_ANON_KEY,
+    });
+    throw new Error("Missing Supabase configuration");
   }
 
   const client = createServerClient (
-      supabaseUrl,
-      supabaseAnonKey,
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() {
@@ -26,7 +26,10 @@ export async function createClient() {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             );
-          } catch {}
+          } catch (error) {
+            // Log cookie setting errors in production for debugging
+            console.error("Error setting cookies:", error);
+          }
         },
       },
     },
