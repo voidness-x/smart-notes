@@ -79,27 +79,32 @@ export const loginAction = async (email: string, password: string) => {
         return { errorMessage: null, success: true};
 
     } catch (error: any) {
-        // Log the actual error for debugging (only in development)
-        if (process.env.NODE_ENV === 'development') {
-            console.error("Login error:", error);
-        }
+        // Always log the actual error for debugging in Vercel logs
+        console.error("Login error:", {
+            message: error?.message,
+            code: error?.code,
+            stack: error?.stack,
+            name: error?.name,
+            fullError: error
+        });
         
         // Check for specific error types
         if (error?.code === 'P1001') {
             return { errorMessage: "Database connection failed. Please try again in a moment.", success: false };
         }
         
-        if (error?.message?.includes("Prisma") || error?.message?.includes("database")) {
+        if (error?.message?.includes("Prisma") || error?.message?.includes("database") || error?.code?.startsWith('P')) {
             return { errorMessage: "Database error. Please try again.", success: false };
         }
         
-        if (error?.message?.includes("SUPABASE") || error?.message?.includes("Supabase")) {
+        if (error?.message?.includes("SUPABASE") || error?.message?.includes("Supabase") || error?.message?.includes("Missing Supabase")) {
             return { errorMessage: "Authentication service error. Please try again.", success: false };
         }
         
-        // Return generic error message
+        // Return the actual error message if available, otherwise generic
+        const errorMsg = error?.message || error?.toString() || "An error occurred during login. Please try again.";
         return { 
-            errorMessage: error?.message || "An error occurred during login. Please try again.", 
+            errorMessage: errorMsg, 
             success: false 
         };
     } 
