@@ -4,11 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "pnpm dlx prisma generate --schema=src/db/schema.prisma && next build",
+    "build": "pnpm dlx prisma@6.19.0 generate --schema=src/db/schema.prisma && next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "pnpm dlx prisma generate --schema=src/db/schema.prisma",
-    "migrate": "pnpm dlx prisma generate --schema=src/db/schema.prisma && pwsh -NoProfile -Command \"Get-Content .env.local | ForEach-Object { if ($_ -match '^(.*?)=(.*)$') { $key=$matches[1]; $val=$matches[2]; Set-Item -Path Env:$key -Value $val } }; pnpm dlx prisma migrate dev --name init\""
+    "postinstall": "pnpm dlx prisma@6.19.0 generate --schema=src/db/schema.prisma",
+    "migrate": "pnpm dlx prisma@6.19.0 generate --schema=src/db/schema.prisma && pwsh -NoProfile -Command \"Get-Content .env.local | ForEach-Object { if ($_ -match '^(.*?)=(.*)$') { $key=$matches[1]; $val=$matches[2]; Set-Item -Path Env:$key -Value $val } }; pnpm dlx prisma@6.19.0 migrate dev --name init\""
   },
   "prisma": {
     "schema": "src/db/schema.prisma"
