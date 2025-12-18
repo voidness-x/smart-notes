@@ -8,9 +8,9 @@ import { sanitizeHTML } from "@/lib/security";
 import { noteIdSchema, noteTextSchema, noteTitleSchema, noteTagsSchema, questionSchema } from "@/lib/validation";
 import { requireAuth, validateNoteAccess, validate } from "@/lib/helpers";
 import pdfParse from "pdf-parse";
-import PDFDocument from "pdfkit";
 import { v4 as uuidv4 } from "uuid";
 import { htmlToPlainText } from "@/lib/utils";
+import { PDFDocument as PdfLibDocument, StandardFonts } from "pdf-lib";
 
 export const createNoteAction = async (noteId: string) => {
     try {
@@ -173,23 +173,73 @@ export const exportNoteAsPdfAction = async (noteId: string, title: string, htmlC
       throw new Error("Note is empty");
     }
 
-    const buffer: Buffer = await new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ margin: 50 });
-      const chunks: Buffer[] = [];
+    const pdfDoc = await PdfLibDocument.create();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-      doc.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
-      doc.on("end", () => resolve(Buffer.concat(chunks)));
-      doc.on("error", reject);
+    const fontSize = 12;
+    const lineHeight = fontSize * 1.4;
+    const margin = 50;
 
-      doc.fontSize(18).text(safeTitle, { align: "left", underline: true });
-      doc.moveDown();
-      doc.fontSize(12).text(plainText, {
-        align: "left",
-        lineGap: 4,
+    const addPage = () => {
+      const page = pdfDoc.addPage();
+      const { width, height } = page.getSize();
+      return { page, width, height };
+    };
+
+    let { page, width, height } = addPage();
+    let y = height - margin;
+
+    const drawLine = (line: string) => {
+      if (y <= margin) {
+        ({ page, width, height } = addPage());
+        y = height - margin;
+      }
+      page.drawText(line, {
+        x: margin,
+        y,
+        size: fontSize,
+        font,
+        maxWidth: width - margin * 2,
+        lineHeight,
       });
+      y -= lineHeight;
+    };
 
-      doc.end();
+    page.drawText(safeTitle, {
+      x: margin,
+      y,
+      size: 18,
+      font,
     });
+    y -= lineHeight * 2;
+
+    const paragraphs = plainText.split(/\n+/);
+    for (const paragraph of paragraphs) {
+      if (!paragraph.trim()) {
+        y -= lineHeight;
+        continue;
+      }
+      const words = paragraph.split(/\s+/);
+      let currentLine = "";
+
+      for (const word of words) {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        const textWidth = font.widthOfTextAtSize(testLine, fontSize);
+        if (textWidth <= width - margin * 2) {
+          currentLine = testLine;
+        } else {
+          drawLine(currentLine);
+          currentLine = word;
+        }
+      }
+
+      if (currentLine) {
+        drawLine(currentLine);
+      }
+      y -= lineHeight;
+    }
+
+    const pdfBytes = await pdfDoc.save();
 
     const safeFileName =
       (safeTitle || "note")
@@ -199,7 +249,7 @@ export const exportNoteAsPdfAction = async (noteId: string, title: string, htmlC
 
     return {
       errorMessage: null,
-      pdfBase64: buffer.toString("base64"),
+      pdfBase64: Buffer.from(pdfBytes).toString("base64"),
       fileName: `${safeFileName}.pdf`,
     };
   } catch (error) {
