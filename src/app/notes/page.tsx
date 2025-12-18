@@ -3,10 +3,13 @@ import AskAIButton from "@/components/ui/AskAIButton";
 import NewNoteButton from "@/components/ui/NewNoteButton";
 import NoteTextInput from "@/components/ui/NoteTextInput";
 import CollabButton from "@/components/ui/CollabButton";
+import ImportPdfButton from "@/components/ui/ImportPdfButton";
+import ExportPdfButton from "@/components/ui/ExportPdfButton";
 import { prisma } from "@/db/prisma";
 import { acceptInviteByTokenAction } from "@/actions/collaboration";
 import { redirect } from "next/navigation";
 import { isValidUUID } from "@/lib/security";
+import { Note } from "@prisma/client";
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -31,7 +34,7 @@ async function HomePage({ searchParams }: Props) {
   const noteId = Array.isArray(noteIdParam) ? noteIdParam[0] : noteIdParam || "";
   
   // Validate noteId format if provided
-  let note = null;
+  let note: Note | null = null;
   if (noteId && user) {
     // Validate UUID format to prevent invalid queries
     if (!isValidUUID(noteId)) {
@@ -51,7 +54,7 @@ async function HomePage({ searchParams }: Props) {
     }
   }
 
-  const isCollaborative = note ? (note as any).isCollaborative || false : false;
+  const isCollaborative = note?.isCollaborative ?? false;
   const isAuthor = note ? note.authorId === user?.id : false;
   
   return (
@@ -62,6 +65,8 @@ async function HomePage({ searchParams }: Props) {
           <CollabButton noteId={noteId} isCollaborative={isCollaborative} />
         )}
         <AskAIButton user={user} />
+        <ExportPdfButton noteId={noteId} user={user} />
+        <ImportPdfButton user={user} />
         <NewNoteButton user={user} />
       </div>
       <NoteTextInput 

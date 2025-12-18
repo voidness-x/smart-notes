@@ -7,6 +7,10 @@ import openai from "@/openai";
 import { sanitizeHTML } from "@/lib/security";
 import { noteIdSchema, noteTextSchema, noteTitleSchema, noteTagsSchema, questionSchema } from "@/lib/validation";
 import { requireAuth, validateNoteAccess, validate } from "@/lib/helpers";
+import pdfParse from "pdf-parse";
+import PDFDocument from "pdfkit";
+import { v4 as uuidv4 } from "uuid";
+import { htmlToPlainText } from "@/lib/utils";
 
 export const createNoteAction = async (noteId: string) => {
     try {
@@ -85,6 +89,119 @@ export const updateNoteTitleAction = async (noteId: string, title: string) => {
       data: { title: validTitle },
     });
     return { errorMessage: null };
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+export const importPdfNoteAction = async (formData: FormData) => {
+  try {
+    const user = await requireAuth();
+    const file = formData.get("file");
+
+    if (!file || typeof file !== "object" || !("arrayBuffer" in file)) {
+      throw new Error("No PDF file provided");
+    }
+
+    const pdfFile = file as File;
+    if (pdfFile.type && pdfFile.type !== "application/pdf") {
+      throw new Error("Only PDF files are supported");
+    }
+
+    const arrayBuffer = await pdfFile.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const parsed = await pdfParse(buffer);
+    const rawText = parsed.text?.trim();
+
+    if (!rawText) {
+      throw new Error("Could not extract text from PDF");
+    }
+
+    const paragraphs = rawText
+      .split(/\n\s*\n/)
+      .map((paragraph) => paragraph.trim())
+      .filter(Boolean);
+
+    const content =
+      paragraphs.length > 0
+        ? paragraphs.map((paragraph) => `<p>${sanitizeHTML(paragraph)}</p>`).join("")
+        : "<p></p>";
+
+    const derivedTitle =
+      (pdfFile.name || "Imported PDF")
+        .replace(/\.pdf$/i, "")
+        .trim() || "Imported PDF";
+
+    const noteId = uuidv4();
+    await prisma.note.create({
+      data: {
+        id: noteId,
+        authorId: user.id,
+        title: derivedTitle,
+        text: content,
+      },
+    });
+
+    return { errorMessage: null, noteId };
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+export const exportNoteAsPdfAction = async (noteId: string, title: string, htmlContent: string) => {
+  try {
+    await validateNoteAccess(noteId);
+
+    const safeTitle = (() => {
+      try {
+        return validate(noteTitleSchema, title ?? "") || "Smart Notes Export";
+      } catch {
+        return "Smart Notes Export";
+      }
+    })();
+
+    const safeContent = (() => {
+      try {
+        return validate(noteTextSchema, htmlContent ?? "");
+      } catch {
+        return "";
+      }
+    })();
+
+    const plainText = htmlToPlainText(safeContent);
+    if (!plainText) {
+      throw new Error("Note is empty");
+    }
+
+    const buffer: Buffer = await new Promise((resolve, reject) => {
+      const doc = new PDFDocument({ margin: 50 });
+      const chunks: Buffer[] = [];
+
+      doc.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", reject);
+
+      doc.fontSize(18).text(safeTitle, { align: "left", underline: true });
+      doc.moveDown();
+      doc.fontSize(12).text(plainText, {
+        align: "left",
+        lineGap: 4,
+      });
+
+      doc.end();
+    });
+
+    const safeFileName =
+      (safeTitle || "note")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "") || "note";
+
+    return {
+      errorMessage: null,
+      pdfBase64: buffer.toString("base64"),
+      fileName: `${safeFileName}.pdf`,
+    };
   } catch (error) {
     return handleError(error);
   }

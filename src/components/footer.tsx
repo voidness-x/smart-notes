@@ -35,11 +35,11 @@ export default function Footer() {
             <h3 className="text-lg font-semibold">Contact Us</h3>
             <div className="space-y-3">
               <a
-                href="mailto:smart.note.contact@gamil.com"
+                href="mailto:smart.notes.contact@gmail.com"
                 className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors group"
               >
                 <Mail className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                <span className="hover:underline">smart.note.contact@gamil.com</span>
+                <span className="hover:underline">smart.notes.contact@gmail.com</span>
               </a>
             </div>
           </div>
