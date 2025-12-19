@@ -21,6 +21,7 @@ model Note {
   author          User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   collaborators   User[]   @relation("NoteCollaborators")
   invites         CollaborationInvite[]
+  notebooks       NoteNotebook[]
 }
 
 model User {
@@ -41,6 +42,8 @@ model User {
   reviewReplies     ReviewReply[]         @relation("UserReviewReplies")
   supportTickets    SupportTicket[]       @relation("UserSupportTickets")
   handledTickets    SupportTicket[]       @relation("HandledByUser")
+  notebooks         Notebook[]
+  sharedNotebooks   NotebookCollaborator[]
   
   @@index([role])
   @@index([blocked])
@@ -62,6 +65,53 @@ model CollaborationInvite {
   @@index([receiverId])
   @@index([inviteToken])
   @@index([status])
+}
+
+model Notebook {
+  id          String       @id @default(uuid())
+  name        String
+  slug        String
+  description String?
+  color       String?
+  authorId    String
+  parentId    String?
+  orderIndex  Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt @default(now())
+  author      User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent      Notebook?    @relation("NotebookHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Notebook[]   @relation("NotebookHierarchy")
+  notes       NoteNotebook[]
+  collaborators NotebookCollaborator[]
+
+  @@unique([authorId, slug])
+  @@index([authorId])
+  @@index([parentId, orderIndex])
+}
+
+model NoteNotebook {
+  noteId     String
+  notebookId String
+  position   Int      @default(0)
+  assignedAt DateTime @default(now())
+  note       Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  notebook   Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+
+  @@id([noteId, notebookId])
+  @@index([notebookId, position])
+}
+
+model NotebookCollaborator {
+  id         String   @id @default(uuid())
+  notebookId String
+  userId     String
+  role       String   @default("editor") // editor, viewer
+  createdAt  DateTime @default(now())
+  notebook   Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([notebookId, userId])
+  @@index([userId])
 }
 
 model Review {

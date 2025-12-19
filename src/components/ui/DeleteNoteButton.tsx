@@ -20,7 +20,7 @@ import { deleteNoteAction } from "@/actions/notes";
 
 type Props = {
   noteId: string;
-  deleteNoteLocally: (noteId: string) => void;
+  deleteNoteLocally?: (noteId: string) => void;
 };
 
 function DeleteNoteButton({ noteId, deleteNoteLocally }: Props) {
@@ -38,11 +38,12 @@ function DeleteNoteButton({ noteId, deleteNoteLocally }: Props) {
         description: "You have successfully deleted the note",
     });
 
-    deleteNoteLocally(noteId);
+    deleteNoteLocally?.(noteId);
 
     if (noteId === noteIdParam) {
         router.replace("/notes");
     }
+    router.refresh();
     } else {
     toast.error("Error", {
         description: errorMessage,

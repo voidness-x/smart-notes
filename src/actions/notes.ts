@@ -11,6 +11,7 @@ import pdfParse from "pdf-parse";
 import { v4 as uuidv4 } from "uuid";
 import { htmlToPlainText } from "@/lib/utils";
 import { PDFDocument as PdfLibDocument, StandardFonts } from "pdf-lib";
+import { ensureDefaultNotebook } from "./notebooks";
 
 export const createNoteAction = async (noteId: string) => {
     try {
@@ -18,6 +19,13 @@ export const createNoteAction = async (noteId: string) => {
         validate(noteIdSchema, noteId);
         await prisma.note.create({
             data: { id: noteId, authorId: user.id, text: "", title: "No title" },
+        });
+        const defaultNotebook = await ensureDefaultNotebook(user.id);
+        await prisma.noteNotebook.create({
+          data: {
+            noteId,
+            notebookId: defaultNotebook.id,
+          },
         });
         return { errorMessage: null };
     } catch (error) {
