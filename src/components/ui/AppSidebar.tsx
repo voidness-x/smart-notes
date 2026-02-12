@@ -151,6 +151,7 @@ async function AppSidebar() {
             <SidebarGroupContent
               notes={notes}
               notebooks={notebooksTree}
+              currentUserId={user.id}
               defaultNotebookId={defaultNotebookId}
             />
           )}

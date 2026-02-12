@@ -66,7 +66,7 @@ type NotebookDialogState =
   | { type: "delete"; notebookId: string; name: string }
   | null;
 
-function SidebarGroupContent({ notes, notebooks, defaultNotebookId }: Props) {
+function SidebarGroupContent({ notes, notebooks, currentUserId, defaultNotebookId }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const noteIdParam = searchParams.get("noteId") || "";
@@ -363,6 +363,7 @@ function SidebarGroupContent({ notes, notebooks, defaultNotebookId }: Props) {
             onRename={handleRenameNotebook}
             onShare={handleShareNotebook}
             onDelete={handleDeleteNotebook}
+            currentUserId={currentUserId}
             defaultNotebookId={defaultNotebookId}
           />
         ))}
@@ -396,6 +397,7 @@ type NotebookNodeProps = {
   onRename: (notebookId: string, currentName: string) => void;
   onShare: (notebookId: string, name: string) => void;
   onDelete: (notebookId: string, name: string) => void;
+  currentUserId: string;
   defaultNotebookId: string | null;
 };
 
@@ -410,6 +412,7 @@ function NotebookNode({
   onRename,
   onShare,
   onDelete,
+  currentUserId,
   defaultNotebookId,
 }: NotebookNodeProps) {
   const expanded = isExpanded(node.id);
@@ -606,7 +609,7 @@ function NotebookDialog({
   let description = "";
   let inputLabel = "";
   let inputValue = "";
-  let setInputValue: (val: string) => void = () => {};
+  let setInputValue: (val: string) => void = () => { };
   let showInput = true;
 
   switch (state.type) {
