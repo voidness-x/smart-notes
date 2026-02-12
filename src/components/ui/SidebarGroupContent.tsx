@@ -563,7 +563,7 @@ function NoteListItem({ note, notebookId, syntheticNotebook, isDefaultNotebook, 
 
   return (
     <div
-      className="group flex items-center justify-between rounded-md border border-transparent px-2 py-1 hover:border-border"
+      className="group group/item flex items-center justify-between rounded-md border border-transparent px-2 py-1 hover:border-border"
       draggable
       onDragStart={handleDragStart}
     >
