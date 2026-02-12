@@ -239,7 +239,9 @@ function SidebarGroupContent({ notes, notebooks, currentUserId, defaultNotebookI
         .map((child) => filterTree(child))
         .filter((child): child is NotebookTreeNode => child !== null);
 
-      if (filteredNotesForNode.length === 0 && filteredChildren.length === 0) {
+      // Always show real (non-synthetic) notebooks even if empty
+      const isSynthetic = node.id.startsWith("__");
+      if (isSynthetic && filteredNotesForNode.length === 0 && filteredChildren.length === 0) {
         return null;
       }
 
@@ -518,6 +520,7 @@ function NotebookNode({
               note={note}
               notebookId={node.id}
               syntheticNotebook={isSynthetic}
+              isDefaultNotebook={isDefault}
               onRemoveNote={onRemoveNote}
             />
           ))}
@@ -548,10 +551,11 @@ type NoteListItemProps = {
   note: NoteWithNotebooks;
   notebookId: string;
   syntheticNotebook: boolean;
+  isDefaultNotebook: boolean;
   onRemoveNote: (noteId: string, notebookId: string) => void;
 };
 
-function NoteListItem({ note, notebookId, syntheticNotebook, onRemoveNote }: NoteListItemProps) {
+function NoteListItem({ note, notebookId, syntheticNotebook, isDefaultNotebook, onRemoveNote }: NoteListItemProps) {
   const handleDragStart = (event: React.DragEvent<HTMLDivElement>) => {
     event.dataTransfer.setData("application/note-id", note.id);
     event.dataTransfer.effectAllowed = "move";
@@ -565,7 +569,7 @@ function NoteListItem({ note, notebookId, syntheticNotebook, onRemoveNote }: Not
     >
       <SelectNoteButton note={note} />
       <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-        {!syntheticNotebook && (
+        {!syntheticNotebook && !isDefaultNotebook && (
           <Button
             variant="ghost"
             size="icon"
