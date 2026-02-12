@@ -104,27 +104,31 @@ async function AppSidebar() {
   let defaultNotebookId: string | null = null;
 
   if (user) {
-    const defaultNotebook = await ensureDefaultNotebook(user.id);
-    defaultNotebookId = defaultNotebook?.id ?? null;
+    try {
+      const defaultNotebook = await ensureDefaultNotebook(user.id);
+      defaultNotebookId = defaultNotebook?.id ?? null;
 
-    const accessibleNotebooks = await getUserNotebooks(user.id);
+      const accessibleNotebooks = await getUserNotebooks(user.id);
 
-    notes = await prisma.note.findMany({
-      where: {
-        OR: [
-          { authorId: user.id },
-          { collaborators: { some: { id: user.id } } },
-        ],
-      },
-      include: {
-        notebooks: true,
-      },
-      orderBy: {
-        updatedAt: "desc",
-      },
-    });
+      notes = await prisma.note.findMany({
+        where: {
+          OR: [
+            { authorId: user.id },
+            { collaborators: { some: { id: user.id } } },
+          ],
+        },
+        include: {
+          notebooks: true,
+        },
+        orderBy: {
+          updatedAt: "desc",
+        },
+      });
 
-    notebooksTree = buildNotebookTree(accessibleNotebooks, notes, user.id);
+      notebooksTree = buildNotebookTree(accessibleNotebooks, notes, user.id);
+    } catch (error) {
+      console.error("AppSidebar: Database error loading notes:", error);
+    }
   }
 
   return (

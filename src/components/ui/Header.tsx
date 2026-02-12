@@ -13,38 +13,26 @@ async function Header() {
   // Get user profile data if logged in
   let userProfile = null;
   if (user) {
-    let profile = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        avatarUrl: true,
-        role: true,
-      },
-    });
+    try {
+      let profile = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          avatarUrl: true,
+          role: true,
+        },
+      });
 
-    // If user doesn't exist in database but is authenticated, create them
-    if (!profile && user.email) {
-      try {
-        profile = await prisma.user.create({
-          data: {
-            id: user.id,
-            email: user.email,
-          },
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            avatarUrl: true,
-            role: true,
-          },
-        });
-      } catch (error: any) {
-        // If user was created by another request (race condition), fetch it
-        if (error?.code === 'P2002') {
-          profile = await prisma.user.findUnique({
-            where: { id: user.id },
+      // If user doesn't exist in database but is authenticated, create them
+      if (!profile && user.email) {
+        try {
+          profile = await prisma.user.create({
+            data: {
+              id: user.id,
+              email: user.email,
+            },
             select: {
               id: true,
               email: true,
@@ -53,11 +41,28 @@ async function Header() {
               role: true,
             },
           });
+        } catch (error: any) {
+          // If user was created by another request (race condition), fetch it
+          if (error?.code === 'P2002') {
+            profile = await prisma.user.findUnique({
+              where: { id: user.id },
+              select: {
+                id: true,
+                email: true,
+                name: true,
+                avatarUrl: true,
+                role: true,
+              },
+            });
+          }
         }
       }
-    }
 
-    userProfile = profile as { id: string; email: string; name?: string | null; avatarUrl?: string | null; role?: string | null } | null;
+      userProfile = profile as { id: string; email: string; name?: string | null; avatarUrl?: string | null; role?: string | null } | null;
+    } catch (error) {
+      // If database connection fails, continue without user profile
+      console.error("Header: Database error fetching user profile:", error);
+    }
   }
 
   return (
