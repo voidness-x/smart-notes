@@ -10,7 +10,7 @@ import { createNoteAction } from "@/actions/notes";
 import { toast } from "sonner"
 
 type Props = {
-    user: User | null;
+  user: User | null;
 };
 
 function NewNoteButton({ user }: Props) {
@@ -27,6 +27,7 @@ function NewNoteButton({ user }: Props) {
       const uuid = uuidv4();
       await createNoteAction(uuid);
       router.push(`/notes?noteId=${uuid}`);
+      router.refresh();
 
       toast.success("New Note Created", {
         description: "Your new note is ready!",
@@ -36,7 +37,7 @@ function NewNoteButton({ user }: Props) {
     }
   };
 
-  return ( 
+  return (
     <Button
       onClick={handleClickNewNoteButton}
       variant="secondary"
