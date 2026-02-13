@@ -11,52 +11,44 @@ import pdfParse from "pdf-parse";
 import { v4 as uuidv4 } from "uuid";
 import { htmlToPlainText } from "@/lib/utils";
 import { PDFDocument as PdfLibDocument, StandardFonts } from "pdf-lib";
-import { ensureDefaultNotebook } from "./notebooks";
 
 export const createNoteAction = async (noteId: string) => {
-    try {
-        const user = await requireAuth();
-        validate(noteIdSchema, noteId);
-        await prisma.note.create({
-            data: { id: noteId, authorId: user.id, text: "", title: "No title" },
-        });
-        const defaultNotebook = await ensureDefaultNotebook(user.id);
-        await prisma.noteNotebook.create({
-          data: {
-            noteId,
-            notebookId: defaultNotebook.id,
-          },
-        });
-        return { errorMessage: null };
-    } catch (error) {
-        return handleError(error);
-    }
+  try {
+    const user = await requireAuth();
+    validate(noteIdSchema, noteId);
+    await prisma.note.create({
+      data: { id: noteId, authorId: user.id, text: "", title: "No title" },
+    });
+    return { errorMessage: null };
+  } catch (error) {
+    return handleError(error);
+  }
 };
 
 export const updateNoteAction = async (noteId: string, text: string) => {
-    try {
-        const { noteId: validId } = await validateNoteAccess(noteId);
-        const validText = validate(noteTextSchema, text);
-        await prisma.note.update({
-            where: { id: validId },
-            data: { text: validText },
-        });
-        return { errorMessage: null };
-    } catch (error) {
-        return handleError(error);
-    }
+  try {
+    const { noteId: validId } = await validateNoteAccess(noteId);
+    const validText = validate(noteTextSchema, text);
+    await prisma.note.update({
+      where: { id: validId },
+      data: { text: validText },
+    });
+    return { errorMessage: null };
+  } catch (error) {
+    return handleError(error);
+  }
 };
 
 export const deleteNoteAction = async (noteId: string) => {
-    try {
-        const { noteId: validId, user } = await validateNoteAccess(noteId, true);
-        await prisma.note.delete({
-            where: { id: validId, authorId: user.id },
-        });
-        return { errorMessage: null };
-    } catch (error) {
-        return handleError(error);
-    }
+  try {
+    const { noteId: validId, user } = await validateNoteAccess(noteId, true);
+    await prisma.note.delete({
+      where: { id: validId, authorId: user.id },
+    });
+    return { errorMessage: null };
+  } catch (error) {
+    return handleError(error);
+  }
 };
 
 export const togglePinAction = async (noteId: string) => {
@@ -312,7 +304,7 @@ export const askAIAboutNotesAction = async (
   try {
     const user = await requireAuth();
     if (newQuestions.length > 10) throw new Error("Too many questions");
-    
+
     newQuestions.forEach(q => validate(questionSchema, q));
 
     const notes = await prisma.note.findMany({
