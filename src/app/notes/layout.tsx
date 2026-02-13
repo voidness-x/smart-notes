@@ -6,6 +6,8 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/ui/AppSidebar";
 import NoteProvider from "@/providers/NoteProvider";
 import { getUser } from "@/auth/server";
+import { prisma } from "@/db/prisma";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Smart Notes",
@@ -17,7 +19,23 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const user = await getUser();
+  const user = await getUser(); // cached — shared with page & sidebar
+
+  // Check if user is blocked
+  if (user) {
+    try {
+      const userData = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { blocked: true },
+      });
+      if (userData?.blocked) {
+        redirect("/blocked");
+      }
+    } catch (error) {
+      // Don't block the app if DB is temporarily unavailable
+      console.error("Database connection error:", error);
+    }
+  }
 
   return (
     <NoteProvider>
@@ -38,3 +56,4 @@ export default async function RootLayout({
     </NoteProvider>
   );
 }
+

@@ -34,30 +34,45 @@ async function HomePage({ searchParams }: Props) {
 
   const noteId = Array.isArray(noteIdParam) ? noteIdParam[0] : noteIdParam || "";
 
-  // If user is logged in but has no noteId, auto-create a note and redirect
-  // (Middleware normally handles this, but this is a fallback for edge cases)
+  // Auto-select latest note or create one if user has no noteId
   if (!noteId && user) {
     try {
-      const newId = uuidv4();
-      await prisma.note.create({
-        data: { id: newId, authorId: user.id, text: "", title: "No title" },
+      // Find the most recently updated note
+      const newestNote = await prisma.note.findFirst({
+        where: {
+          OR: [
+            { authorId: user.id },
+            { collaborators: { some: { id: user.id } } },
+          ],
+        },
+        orderBy: { updatedAt: "desc" },
+        select: { id: true },
       });
-      redirect(`/notes?noteId=${newId}`);
+
+      if (newestNote) {
+        redirect(`/notes?noteId=${newestNote.id}`);
+      } else {
+        // No notes exist — create one and redirect
+        const newId = uuidv4();
+        await prisma.note.create({
+          data: { id: newId, authorId: user.id, text: "", title: "No title" },
+        });
+        redirect(`/notes?noteId=${newId}`);
+      }
     } catch (error) {
-      console.error("Notes page: Error creating initial note:", error);
+      // redirect() throws a special error — rethrow it
+      if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+      console.error("Notes page: Error selecting/creating note:", error);
     }
   }
 
   // Validate noteId format if provided
   let note: Note | null = null;
   if (noteId && user) {
-    // Validate UUID format to prevent invalid queries
     if (!isValidUUID(noteId)) {
-      // Invalid noteId format - treat as if note doesn't exist
       note = null;
     } else {
       try {
-        // Find note - either user is author or collaborator
         note = await prisma.note.findFirst({
           where: {
             id: noteId,
@@ -78,7 +93,6 @@ async function HomePage({ searchParams }: Props) {
   const isAuthor = note ? note.authorId === user?.id : false;
 
   return (
-
     <div className="flex h-full flex-col items-center gap-4 w-full">
       <div className="flex w-full max-w-4xl justify-end gap-2 flex-wrap">
         {noteId && isAuthor && (
@@ -96,7 +110,6 @@ async function HomePage({ searchParams }: Props) {
         startingTitle={note?.title || "No title"}
         isCollaborative={isCollaborative}
       />
-
     </div>
   );
 }
