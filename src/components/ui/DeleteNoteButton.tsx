@@ -17,13 +17,15 @@ import { useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { deleteNoteAction } from "@/actions/notes";
+import { Note } from "@prisma/client";
 
 type Props = {
   noteId: string;
   deleteNoteLocally?: (noteId: string) => void;
+  allNotes?: Note[];
 };
 
-function DeleteNoteButton({ noteId, deleteNoteLocally }: Props) {
+function DeleteNoteButton({ noteId, deleteNoteLocally, allNotes }: Props) {
   const router = useRouter();
   const noteIdParam = useSearchParams().get("noteId") || "";
 
@@ -31,25 +33,35 @@ function DeleteNoteButton({ noteId, deleteNoteLocally }: Props) {
 
   const handleDeleteNote = () => {
     startTransition(async () => {
-    const { errorMessage } = await deleteNoteAction(noteId);
+      // Optimistically remove from sidebar immediately
+      deleteNoteLocally?.(noteId);
 
-    if (!errorMessage) {
-    toast.success("Note Deleted", {
-        description: "You have successfully deleted the note",
-    });
+      const { errorMessage } = await deleteNoteAction(noteId);
 
-    deleteNoteLocally?.(noteId);
+      if (!errorMessage) {
+        toast.success("Note Deleted", {
+          description: "You have successfully deleted the note",
+        });
 
-    if (noteId === noteIdParam) {
-        router.replace("/notes");
-    }
-    router.refresh();
-    } else {
-    toast.error("Error", {
-        description: errorMessage,
-    });
-    }
-
+        // If we deleted the active note, navigate to the next one
+        if (noteId === noteIdParam && allNotes) {
+          const remaining = allNotes.filter((n) => n.id !== noteId);
+          if (remaining.length > 0) {
+            // Navigate to the most recently updated remaining note
+            const sorted = [...remaining].sort(
+              (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+            );
+            router.push(`/notes?noteId=${sorted[0].id}`);
+          } else {
+            // No notes left — stay on blank /notes page
+            router.push("/notes");
+          }
+        }
+      } else {
+        toast.error("Error", {
+          description: errorMessage,
+        });
+      }
     });
   };
   return (

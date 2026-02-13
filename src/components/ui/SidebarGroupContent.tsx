@@ -140,7 +140,11 @@ function SidebarGroupContent({ notes }: Props) {
           >
             <SelectNoteButton note={note} />
             <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-              <DeleteNoteButton noteId={note.id} />
+              <DeleteNoteButton
+                noteId={note.id}
+                deleteNoteLocally={(id) => setLocalNotes((prev) => prev.filter((n) => n.id !== id))}
+                allNotes={localNotes}
+              />
             </div>
           </div>
         ))}

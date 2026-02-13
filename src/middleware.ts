@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { prisma } from "@/db/prisma";
 
 export async function middleware(request: NextRequest) {
   return await updateSession(request);
@@ -39,64 +40,58 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
+  // Auth check — single call, reused for all checks below
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Redirect logged-in users away from auth pages
   const isAuthRoute =
     request.nextUrl.pathname === "/login" ||
     request.nextUrl.pathname === "/sign-up";
 
-  if (isAuthRoute) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      return NextResponse.redirect(
-        new URL("/notes", process.env.NEXT_PUBLIC_BASE_URL || request.url),
-      );
-    }
+  if (isAuthRoute && user) {
+    return NextResponse.redirect(
+      new URL("/notes", process.env.NEXT_PUBLIC_BASE_URL || request.url),
+    );
   }
 
-  const { searchParams, pathname } = new URL(request.url);
+  // For /notes routes: check blocked status & auto-select latest note
+  if (request.nextUrl.pathname === "/notes" && user) {
+    try {
+      // Check if user is blocked (moved from layout to avoid per-render DB call)
+      const userData = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { blocked: true },
+      });
 
-  if (!searchParams.get("noteId") && pathname === "/notes") {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      try {
-        // Use the request URL to determine base URL (works in all environments)
-        const requestUrl = new URL(request.url);
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${requestUrl.protocol}//${requestUrl.host}`;
-        const cookieHeader = request.headers.get('cookie') || '';
-        
-        // Try to fetch the newest note first
-        const fetchResponse = await fetch(`${baseUrl}/api/fetch-newest-note?userId=${user.id}`, {
-          headers: { 'Cookie': cookieHeader },
-        });
-        
-        if (fetchResponse.ok) {
-          const { newestNoteId } = await fetchResponse.json();
-          if (newestNoteId) {
-            const url = request.nextUrl.clone();
-            url.searchParams.set("noteId", newestNoteId);
-            return NextResponse.redirect(url);
-          }
-        }
-
-        // If no note exists, create a new one
-        const createResponse = await fetch(`${baseUrl}/api/create-new-note?userId=${user.id}`, {
-            method: "POST",
-          headers: { "Content-Type": "application/json", 'Cookie': cookieHeader },
-        });
-
-        if (createResponse.ok) {
-          const { noteId } = await createResponse.json();
-        if (noteId) {
-          const url = request.nextUrl.clone();
-          url.searchParams.set("noteId", noteId);
-          return NextResponse.redirect(url);
-          }
-        }
-      } catch (error) {
-        // Log error in production for debugging, but don't block the request
-        console.error("Error in middleware note selection:", error);
+      if (userData?.blocked) {
+        return NextResponse.redirect(new URL("/blocked", request.url));
       }
+
+      // Auto-select the latest note if no noteId is provided
+      if (!request.nextUrl.searchParams.get("noteId")) {
+        const newestNote = await prisma.note.findFirst({
+          where: {
+            OR: [
+              { authorId: user.id },
+              { collaborators: { some: { id: user.id } } },
+            ],
+          },
+          orderBy: { updatedAt: "desc" },
+          select: { id: true },
+        });
+
+        if (newestNote) {
+          const url = request.nextUrl.clone();
+          url.searchParams.set("noteId", newestNote.id);
+          return NextResponse.redirect(url);
+        }
+        // If no notes exist, let the page handle it (no redirect)
+      }
+    } catch (error) {
+      console.error("Middleware error:", error);
+      // Continue to page on error — don't block the user
     }
   }
 

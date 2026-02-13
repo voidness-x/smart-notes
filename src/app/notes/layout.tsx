@@ -6,8 +6,6 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/ui/AppSidebar";
 import NoteProvider from "@/providers/NoteProvider";
 import { getUser } from "@/auth/server";
-import { prisma } from "@/db/prisma";
-import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Smart Notes",
@@ -20,42 +18,23 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const user = await getUser();
-  
-  // Check if user is blocked
-  if (user) {
-    try {
-      const userData = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: { blocked: true },
-      });
-
-      if (userData?.blocked) {
-        redirect("/blocked");
-      }
-    } catch (error) {
-      // If database connection fails, log error but don't block the app
-      // This allows the app to continue functioning even if database is temporarily unavailable
-      console.error("Database connection error:", error);
-      // Continue rendering the layout - user can still use the app
-    }
-  }
 
   return (
-          <NoteProvider>
-            <SidebarProvider>
-              <div className="mr-[-1px]">
-                <AppSidebar />
-              </div>
-              <div className="flex min-h-screen w-full flex-col overflow-hidden">
-                <Header />
+    <NoteProvider>
+      <SidebarProvider>
+        <div className="mr-[-1px]">
+          <AppSidebar />
+        </div>
+        <div className="flex min-h-screen w-full flex-col overflow-hidden">
+          <Header />
 
-                <main className="flex flex-1 flex-col px-2 sm:px-4 pt-6 sm:pt-10 xl:px-8">
-                  {children}
-                </main>
-              </div>
-            </SidebarProvider>
-            
-            <Toaster />
-          </NoteProvider>
+          <main className="flex flex-1 flex-col px-2 sm:px-4 pt-6 sm:pt-10 xl:px-8">
+            {children}
+          </main>
+        </div>
+      </SidebarProvider>
+
+      <Toaster />
+    </NoteProvider>
   );
 }

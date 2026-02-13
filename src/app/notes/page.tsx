@@ -10,6 +10,7 @@ import { acceptInviteByTokenAction } from "@/actions/collaboration";
 import { redirect } from "next/navigation";
 import { isValidUUID } from "@/lib/security";
 import { Note } from "@prisma/client";
+import { v4 as uuidv4 } from "uuid";
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -32,6 +33,20 @@ async function HomePage({ searchParams }: Props) {
   }
 
   const noteId = Array.isArray(noteIdParam) ? noteIdParam[0] : noteIdParam || "";
+
+  // If user is logged in but has no noteId, auto-create a note and redirect
+  // (Middleware normally handles this, but this is a fallback for edge cases)
+  if (!noteId && user) {
+    try {
+      const newId = uuidv4();
+      await prisma.note.create({
+        data: { id: newId, authorId: user.id, text: "", title: "No title" },
+      });
+      redirect(`/notes?noteId=${newId}`);
+    } catch (error) {
+      console.error("Notes page: Error creating initial note:", error);
+    }
+  }
 
   // Validate noteId format if provided
   let note: Note | null = null;

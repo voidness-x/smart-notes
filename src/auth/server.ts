@@ -1,9 +1,10 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { cache } from 'react'
 
 export async function createClient() {
   try {
-  const cookieStore = await cookies()
+    const cookieStore = await cookies()
 
     // Validate environment variables
     if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
@@ -32,32 +33,32 @@ export async function createClient() {
             },
           },
         },
-    );
-  }
+      );
+    }
 
-  const client = createServerClient (
-        process.env.SUPABASE_URL,
-        process.env.SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
+    const client = createServerClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_ANON_KEY,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              );
             } catch (error) {
               // Log cookie setting errors in production for debugging
               console.error("Error setting cookies:", error);
             }
+          },
         },
       },
-    },
-  );
+    );
 
-return client;
+    return client;
   } catch (error) {
     // If creating client fails, log and return a minimal client
     // This prevents server component render errors
@@ -80,21 +81,21 @@ return client;
   }
 }
 
-export async function getUser() {
-    try {
-        const {auth} = await createClient();
+export const getUser = cache(async () => {
+  try {
+    const { auth } = await createClient();
 
-        const userObject = await auth.getUser()
+    const userObject = await auth.getUser()
 
-        if (userObject.error) {
-            // Don't log auth errors - they're expected when user is not logged in
-            return null
-        }
-
-        return userObject.data.user;
-    } catch (error) {
-        // Silently handle any errors (e.g., missing session, cookie issues)
-        // This prevents the app from crashing when checking auth status
-        return null;
+    if (userObject.error) {
+      // Don't log auth errors - they're expected when user is not logged in
+      return null
     }
-}
+
+    return userObject.data.user;
+  } catch (error) {
+    // Silently handle any errors (e.g., missing session, cookie issues)
+    // This prevents the app from crashing when checking auth status
+    return null;
+  }
+});

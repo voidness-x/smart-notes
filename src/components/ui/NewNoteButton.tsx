@@ -27,7 +27,6 @@ function NewNoteButton({ user }: Props) {
       const uuid = uuidv4();
       await createNoteAction(uuid);
       router.push(`/notes?noteId=${uuid}`);
-      router.refresh();
 
       toast.success("New Note Created", {
         description: "Your new note is ready!",

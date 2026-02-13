@@ -47,7 +47,6 @@ export default function ImportPdfButton({ user }: Props) {
 
       toast.success("PDF imported successfully.");
       router.push(`/notes?noteId=${result?.noteId}`);
-      router.refresh();
       event.target.value = "";
     });
   };
