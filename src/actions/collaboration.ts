@@ -5,7 +5,7 @@ import { handleError } from "@/lib/utils";
 import { randomBytes } from "crypto";
 import { inviteTokenSchema } from "@/lib/validation";
 import { isValidUUID } from "@/lib/security";
-import { requireAuth, validateNoteAccess, validate } from "@/helpers";
+import { requireAuth, validateNoteAccess, validate } from "@/lib/helpers";
 
 const getBaseUrl = () => {
   if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;

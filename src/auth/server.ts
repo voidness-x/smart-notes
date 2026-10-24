@@ -6,17 +6,11 @@ export async function createClient() {
   try {
     const cookieStore = await cookies()
 
-    // Validate environment variables
     if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
-      console.error("Missing Supabase environment variables:", {
-        hasUrl: !!process.env.SUPABASE_URL,
-        hasKey: !!process.env.SUPABASE_ANON_KEY,
-      });
-      // Return a client with invalid config - the actual API calls will fail gracefully
-      // This prevents throwing errors that break server component rendering
+      console.warn('Authentication configuration is incomplete.')
       return createServerClient(
-        process.env.SUPABASE_URL || "",
-        process.env.SUPABASE_ANON_KEY || "",
+        process.env.SUPABASE_URL || '',
+        process.env.SUPABASE_ANON_KEY || '',
         {
           cookies: {
             getAll() {
@@ -26,14 +20,14 @@ export async function createClient() {
               try {
                 cookiesToSet.forEach(({ name, value, options }) =>
                   cookieStore.set(name, value, options)
-                );
-              } catch (error) {
-                console.error("Error setting cookies:", error);
+                )
+              } catch {
+                // ignore cookie set failures in incomplete local config
               }
             },
           },
         },
-      );
+      )
     }
 
     const client = createServerClient(
@@ -48,54 +42,46 @@ export async function createClient() {
             try {
               cookiesToSet.forEach(({ name, value, options }) =>
                 cookieStore.set(name, value, options)
-              );
-            } catch (error) {
-              // Log cookie setting errors in production for debugging
-              console.error("Error setting cookies:", error);
+              )
+            } catch {
+              // ignore cookie set failures
             }
           },
         },
       },
-    );
+    )
 
-    return client;
-  } catch (error) {
-    // If creating client fails, log and return a minimal client
-    // This prevents server component render errors
-    console.error("Error creating Supabase client:", error);
-    const cookieStore = await cookies();
+    return client
+  } catch {
+    const cookieStore = await cookies()
     return createServerClient(
-      process.env.SUPABASE_URL || "",
-      process.env.SUPABASE_ANON_KEY || "",
+      process.env.SUPABASE_URL || '',
+      process.env.SUPABASE_ANON_KEY || '',
       {
         cookies: {
           getAll() {
             return cookieStore.getAll()
           },
           setAll() {
-            // Silently fail if cookies can't be set
+            // silently fail if the auth client cannot be created
           },
         },
       },
-    );
+    )
   }
 }
 
 export const getUser = cache(async () => {
   try {
-    const { auth } = await createClient();
-
+    const { auth } = await createClient()
     const userObject = await auth.getUser()
 
     if (userObject.error) {
-      // Don't log auth errors - they're expected when user is not logged in
       return null
     }
 
-    return userObject.data.user;
-  } catch (error) {
-    // Silently handle any errors (e.g., missing session, cookie issues)
-    // This prevents the app from crashing when checking auth status
-    return null;
+    return userObject.data.user
+  } catch {
+    return null
   }
-});
+})
