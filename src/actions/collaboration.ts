@@ -5,7 +5,13 @@ import { handleError } from "@/lib/utils";
 import { randomBytes } from "crypto";
 import { inviteTokenSchema } from "@/lib/validation";
 import { isValidUUID } from "@/lib/security";
-import { requireAuth, validateNoteAccess, validate } from "@/lib/helpers";
+import { requireAuth, validateNoteAccess, validate } from "@/helpers";
+
+const getBaseUrl = () => {
+  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
+};
 
 export const toggleCollaborationAction = async (noteId: string, isCollaborative: boolean) => {
   try {
@@ -16,9 +22,7 @@ export const toggleCollaborationAction = async (noteId: string, isCollaborative:
     });
     if (!note || note.authorId !== user.id) throw new Error("You can only toggle collaboration on your own notes");
     
-    // If turning off collaboration, remove all collaborators
     if (!isCollaborative) {
-      // Disconnect all collaborators if there are any
       const collaboratorIds = note.collaborators.map(c => c.id);
       const updateData: any = { isCollaborative: false };
       
@@ -33,7 +37,6 @@ export const toggleCollaborationAction = async (noteId: string, isCollaborative:
         data: updateData
       });
     } else {
-      // Just enable collaboration
       await prisma.note.update({ 
         where: { id: validId }, 
         data: { isCollaborative: true } 
@@ -60,18 +63,7 @@ export const createInviteLinkAction = async (noteId: string) => {
       data: { noteId: validId, senderId: user.id, inviteToken, expiresAt, status: "pending" },
     });
 
-    // Get base URL for invite link - never use localhost in production
-    let baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-    if (!baseUrl && process.env.VERCEL_URL) {
-        baseUrl = `https://${process.env.VERCEL_URL}`;
-    }
-    if (!baseUrl) {
-        // In production, always use production URL, never localhost
-        baseUrl = process.env.NODE_ENV === 'production' 
-            ? 'https://smart-notes-olive-alpha.vercel.app' 
-            : 'http://localhost:3000';
-    }
-    return { errorMessage: null, inviteLink: `${baseUrl}/notes?invite=${inviteToken}` };
+    return { errorMessage: null, inviteLink: `${getBaseUrl()}/notes?invite=${inviteToken}` };
   } catch (error) {
     return handleError(error);
   }
@@ -225,4 +217,3 @@ export const acceptInviteByTokenAction = async (inviteToken: string) => {
     return { ...handleError(error), noteId: undefined };
   }
 };
-
